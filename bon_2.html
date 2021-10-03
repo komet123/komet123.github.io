@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>BON CABE</title>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width">
+</head>
+
+<style>
+*{
+	box-sizing: border-box;
+}
+body{
+	margin: 0;
+	padding: 0;
+	background-color: white;
+}
+
+h4{
+	color: red;
+	font-weight: 600;
+	margin: .80em 0px;
+	font-size: 20pt;
+}
+
+table{
+	border-collapse: collapse;
+	font-family: serif;
+	max-width: 1000px;
+	margin: 0px auto;
+	font-size: 12pt;
+}
+
+th{
+	padding: 8px 0px;
+	min-width: 70px;
+}
+
+th:nth-last-child(1){
+	color: red;
+}
+
+tr:nth-child(1) th{
+	border: 2px solid #000;
+}
+
+tr{
+	background-color: white;
+}
+
+
+tr:nth-child(1){
+	padding: 15px 0px;
+}
+
+tr:nth-last-child(1){
+	border-top: 4px solid black;
+	height: 40px;
+	font-weight: 600;
+}
+
+tr:nth-last-child(1) td:nth-last-child(1){
+	background-color: gold;
+}
+
+td:nth-last-child(1){
+	background: red;
+	border-left: 2px solid #000;
+}
+
+th:nth-child(even),
+td:nth-child(even){
+	background-color: #dddddd;
+}
+
+td{
+	text-align: center;
+}
+
+input[type=number]{
+	border: 0;
+	height: 40px;
+	width: 100%;
+	text-align: center;
+	font-size: 12pt;
+	background: none;
+}
+
+.header{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+#btn_Add{
+	padding: 8px 10px;
+	cursor: pointer;
+	background-color: mediumseagreen;
+	color: white;
+	border-radius: 5px;
+	border: none;
+}
+
+.box{
+	background-color: white;
+}
+
+</style>
+<body>
+
+<div class="header">
+	<h4>BON CABE</h4>
+	<button id="btn_Add" onclick="addVisual()">Tambah Visual</button>
+</div>
+
+<div class="box">
+	<table border="1" cellpadding="0" cellspacing="0" id="table">
+		<tr>
+			<th>3T</th>
+			<th>4</th>
+			<th>4T</th>
+			<th>5</th>
+			<th>5T</th>
+			<th>6</th>
+			<th>6T</th>
+			<th>7</th>
+			<th>Total</th>
+		</tr>
+		<tr visual="1">
+			<td>
+				<input type="number" min="0" value="0" sizename="3t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="7">
+			</td>
+			<td id="hasil_1">
+				
+			</td>
+		</tr>
+		<tr visual="2">
+			<td>
+				<input type="number" min="0" value="0" sizename="3t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="7">
+			</td>
+			<td id="hasil_2">
+				
+			</td>
+		</tr>
+		<tr visual="3">
+			<td>
+				<input type="number" min="0" value="0" sizename="3t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="4t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="5t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="6t">
+			</td>
+			<td>
+				<input type="number" min="0" value="0" sizename="7">
+			</td>
+			<td id="hasil_3">
+				
+			</td>
+		</tr>
+		<tr totalSize>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td>
+				
+			</td>
+			<td id="total">
+				
+			</td>
+		</tr>
+	</table>
+</div>
+
+</body>
+</html>
+
+<script>
+addEventListener('load', ()=>{
+	// setTimeout(autoload, 2000)
+	const getSize = document.location.href.split("?");
+	if(getSize[1]){
+		const sizes = getSize[1].split("&").sort();
+		console.log("di Setting");
+		// Kosongkan table
+		document.querySelector("#table").innerHTML = ""
+		document.querySelector("#table").append(document.createElement("tbody"))
+		let table = document.querySelector("#table tbody");
+
+		//buat baru
+		for (var i = 0; i < 4; i++) {
+			if(i == 0){
+				let tr = document.createElement("tr")
+				sizes.push("TOTAL")
+				for (var n = 0; n < sizes.length; n++) {
+					let th = document.createElement("th");
+					th.innerHTML = sizes[n]
+					tr.appendChild(th)
+				}
+				table.appendChild(tr)
+			}
+			if (i !== 3) {
+				let tr = document.createElement("tr")
+				tr.setAttribute("visual", i+1)
+				for (var n = 0; n < sizes.length; n++) {
+					let td = document.createElement("td");
+					if(sizes.length-1 !== n){
+						let input = document.createElement("input")
+						input.setAttribute("type", "number")
+						input.setAttribute("sizename", sizes[n])
+						input.setAttribute("min",0)
+						input.value = 0
+						td.appendChild(input)
+					} else {
+						td.setAttribute("id", "hasil_"+(i+1))
+					}
+					tr.appendChild(td)
+				}
+				table.appendChild(tr)
+			}
+			if (i == 3) {
+				let tr = document.createElement("tr")
+				tr.setAttribute("totalSize", "")
+				for (var n = 0; n < sizes.length; n++) {
+					let td = document.createElement("td");
+					tr.appendChild(td)
+					if(sizes.length-1 == n){
+						td.setAttribute('id',"total")
+					}
+				}
+				table.appendChild(tr)
+			}
+		}
+
+	} else {
+		console.log("Tidak disetting")
+	}
+
+	setTimeout(()=>{
+		let input = document.querySelectorAll('input[type=number]');
+		input.forEach((item,index)=>{
+			item.addEventListener('change', totalAll)
+		})
+	}, 1000)
+
+})
+
+function autoload() {
+	setTimeout(()=>{
+		let xhr	= new XMLHttpRequest()
+		xhr.open("GET", 'http://localhost/other/bon.html')
+		xhr.onload = ()=>{
+			document.body.innerHTML = "";
+			document.write(xhr.responseText)
+		}
+		xhr.send()
+		autoload();
+	}, 4500)
+}
+
+function openFullscreen() {
+	let elem = document.querySelector(".box")
+	if (elem.requestFullscreen) {
+		elem.requestFullscreen();
+	}
+}
+
+function addVisual() {
+	let visual = document.querySelectorAll('tr[visual]')
+	let tr = document.createElement('TR')
+	let td = document.createElement('TD')
+	let sizes = document.querySelectorAll('th')
+	let sizename = [];
+	sizes.forEach((item,index)=>{
+		sizename.push(item.innerHTML)
+	})
+	sizename.reverse()
+	sizename.shift()
+
+	for (var i = sizes.length - 2; i >= 0; i--) {
+		let size = document.createElement('td')
+		let input = document.createElement('input')
+		input.setAttribute('type','number')
+		input.value = 0
+		input.setAttribute('sizename', sizename[i].toLowerCase());
+		size.appendChild(input)
+		tr.appendChild(size)
+		input.addEventListener('change', totalAll)
+	}
+	tr.appendChild(td)
+	tr.querySelectorAll("td")[parseInt(sizes.length-1)].setAttribute("id", "hasil_"+(parseInt(visual.length+1)))
+
+
+	tr.setAttribute('visual', visual.length+1)
+
+
+	let table = document.querySelector('#table tbody');
+	let baris = table.childElementCount-1;
+	table.insertBefore(tr, table.childNodes[baris]);
+
+	// let baris = document.querySelector("tr[totalSize]");
+	// baris.previousElementSibling.
+	
+}
+
+function totalAll() {
+	// TOTAL AKHIR
+	let input = document.querySelectorAll('input[type=number]')
+	let data = [];
+	input.forEach((item)=>{
+		if(item.value == ""){
+			item.value = 0;
+		} else {
+			data.push(parseInt(item.value))
+		}
+	})
+	const total = data.reduce((a, b) => a + b);
+	document.querySelector('#total').innerHTML = total;
+
+	totalVs()
+	totalSize()
+}
+
+function totalVs() {
+	//TOTAL tiap VISUAL
+	let input = document.querySelectorAll('tr[visual]')
+	
+	input.forEach((item)=>{
+		let vs_id = item.getAttribute('visual'); 	
+		let data = [];
+		item.querySelectorAll("td input[type=number]").forEach((n)=>{
+			data.push(parseInt(n.value));
+		})
+		const total = data.reduce((a, b) => a + b);
+		item.querySelector("td#hasil_"+vs_id).innerHTML = total;
+	})
+}
+
+function totalSize() {
+	let tr = document.querySelectorAll("tr[visual]")
+	let td = document.querySelectorAll("th")
+	let data = []
+
+	td.forEach((item)=>{
+		data.push(item.innerHTML)
+	})
+
+	data.pop()
+
+	for (var i = 0; i < data.length; i++) {
+		let sizes = [];
+		for (var n= 0; n < tr.length; n++) {
+			let vs = tr[n].getAttribute('visual')
+			sizes.push(parseInt(document.querySelectorAll("input[sizename='"+data[i].toLowerCase()+"']")[n].value))
+		}
+		const total = sizes.reduce((a, b) => a + b);
+		document.querySelectorAll("tr[totalSize] td")[i].innerHTML = total;
+	}
+}
+</script>
