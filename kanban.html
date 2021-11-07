@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Kalkulator</title>
+    <!-- Link Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css"
+        integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+
+    <!-- Link fontawesome -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css"
+        integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
+
+    <script src="main.js"></script>
+
+    <style>
+        .kanban-box {
+            max-width: 900px;
+            margin: 1em auto;
+        }
+
+        #kanban_set .table {
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        #kanban_set .table th[scope=col] {
+            max-width: 70px;
+            min-width: 70px;
+        }
+
+        #kanban_set .table tr th:nth-last-child(1),
+        #kanban_set .table tr td:nth-last-child(1) {
+            text-align: right;
+        }
+
+        #kanban_set .table tfoot {
+            background-color: lemonchiffon;
+            border-top: 1.50px solid;
+        }
+
+        [reminder] {
+            display: block;
+            min-width: 40px;
+            margin: 0;
+            height: 100%;
+            line-height: 2.5;
+        }
+
+        .balance-sizerun {
+            width: 60px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="row no-gutters align-items-center" id="kanban_menu">
+        <div class="col">
+            <div class="btn btn-block btn-outline-primary rounded-0" menu-name="form">Form</div>
+        </div>
+        <div class="col">
+            <div class="btn btn-block btn-outline-primary rounded-0" menu-name="set">Kanban</div>
+        </div>
+        <div class="col">
+            <div class="btn btn-block btn-outline-primary rounded-0 active" menu-name="input">Input</div>
+        </div>
+    </div>
+
+    <div class="kanban-box p-2 d-none" id="kanban_form">
+        <div class="row no-gutters align-items-center justify-content-between">
+            <div class="col">
+                <b>Form Kanban</b>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary" form-save>Simpan</button>
+            </div>
+        </div>
+
+        <div class="py-2">
+            <div class="row no-gutters mb-2">
+                <div class="col">
+                    <label for="kanban_qty">Qty :</label>
+                    <input type="text" id="kanban_qty" class="form-control" placeholder="qty/lotcode">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="3T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            3T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="4">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            4
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="4T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            4T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="5">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            5
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="5T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            5T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="6">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            6
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="6T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            6T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" form-sizerun="7">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            7
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" sizerun>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" min="0" value="0">
+                </div>
+            </div>
+            <hr>
+            <div class="row no-gutters" balance-total>
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            Total
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" class="form-control" sizerun="total" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <input type="number" class="form-control balance-sizerun" value="0" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="kanban-box p-2 d-none" id="kanban_set">
+        <div class="row no-gutters align-items justify-content-between">
+            <div class="col">
+                <b>Kanban</b>
+                <div>
+                    <b>QTY :</b>
+                    <b kanban-name="qty">0000</b>
+                </div>
+
+            </div>
+            <div class="col-auto">
+                <span date_now>Senin, 01/11/2021</span>
+            </div>
+        </div>
+
+        <div class="my-2 table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr class="table-primary text-center">
+                        <th scope="col">3T</th>
+                        <th scope="col">4</th>
+                        <th scope="col">4T</th>
+                        <th scope="col">5</th>
+                        <th scope="col">5T</th>
+                        <th scope="col">6</th>
+                        <th scope="col">6T</th>
+                        <th scope="col">7</th>
+                        <th scope="col">Total</th>
+                    </tr>
+                    <tr class="table-danger" kanban-name="sizerun">
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                        <th>0</th>
+                    </tr>
+                </thead>
+                <tbody kanban-name="input">
+                    <tr>
+                        <td d-size="3T">0</td>
+                        <td d-size="4">0</td>
+                        <td d-size="4T">0</td>
+                        <td d-size="5">0</td>
+                        <td d-size="5T">0</td>
+                        <td d-size="6">0</td>
+                        <td d-size="6T">0</td>
+                        <td d-size="7">0</td>
+                        <td d-size="total">0</td>
+                    </tr>
+                    <tr>
+                        <td d-size="3T">0</td>
+                        <td d-size="4">0</td>
+                        <td d-size="4T">0</td>
+                        <td d-size="5">0</td>
+                        <td d-size="5T">0</td>
+                        <td d-size="6">0</td>
+                        <td d-size="6T">0</td>
+                        <td d-size="7">0</td>
+                        <td d-size="total">0</td>
+                    </tr>
+                    <tr>
+                        <td d-size="3T">0</td>
+                        <td d-size="4">0</td>
+                        <td d-size="4T">0</td>
+                        <td d-size="5">0</td>
+                        <td d-size="5T">0</td>
+                        <td d-size="6">0</td>
+                        <td d-size="6T">0</td>
+                        <td d-size="7">0</td>
+                        <td d-size="total">0</td>
+                    </tr>
+                </tbody>
+                <tfoot kanban-name="sisa">
+                    <tr>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+    </div>
+
+    <div class="kanban-box p-2" id="kanban_input">
+        <div class="row flex-column-reverse flex-md-row no-gutters align-items justify-content-between">
+            <div class="col">
+                <b>Input</b>
+                <div>
+                    <b>QTY :</b>
+                    <b kanban-name="qty">0000</b>
+                </div>
+
+            </div>
+            <div class="col-auto">
+                <div class="d-flex justify-content-between">
+                    <span class="" date_now>Senin, 01/11/2021</span>
+                    <span class="btn btn-sm btn-primary" onclick="inputData()">Simpan</span>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="py-2">
+            <div class="row no-gutters mb-1" input-data="3T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            3T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="4">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            4
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="4T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            4T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="5">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            5
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="5T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            5T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="6">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            6
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="6T">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            6T
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <div class="row no-gutters mb-1" input-data="7">
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            7
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+            <hr>
+            <div class="row no-gutters" input-total>
+                <div class="col">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-lg-1 col-2">
+                            Total
+                        </div>
+                        <div class="col">
+                            <input type="number" min="0" value="0" class="form-control" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto ml-2">
+                    <div class="badge badge-primary" reminder>0</div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Menampilkan sisa data lalu dikurang data input lalu jika data sudah 0 maka sisa akhir akan menampilkan ok -->
+    </div>
+
+</body>
+
+</html>
