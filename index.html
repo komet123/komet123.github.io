@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Upper Scanner</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="html5-qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital@1&display=swap" rel="stylesheet">
+</head>
+
+<style>
+.header-logo{
+  font-family: 'Lato', sans-serif;
+}
+.upper-size{
+  text-align: center;
+  width: 60px;
+}
+</style>
+<body>
+  <div class="p-2 p-sm-3">
+
+    <div class="row flex-column flex-md-row no-gutters">
+
+      <div class="col-auto">
+        <h2 class="header-logo text-center text-md-left"><a href="./" class="text-decoration-none text-dark">Upper Scanner 0.1</a></h2>
+
+        <!-- scanner -->
+        <div style="width: 280px;min-height: 280px;" class="mx-md-3 mx-auto" id="reader"></div>
+
+        <div style="width: 280px;margin: auto;text-align: center;" class="p-2" id="result"></div>
+      </div>
+
+      <div class="col">
+        <h4 class="header-logo">Result :</h4>
+        <table class="table table-bordered table-striped">
+          
+        </table>
+
+
+        <div class="row no-gutters justify-content-between">
+          <div class="col-auto">
+            <span class="btn btn-primary" onclick="sortTable()">Urutkan</span>
+          </div>
+          <div class="col-auto">
+            <span class="btn btn-danger" onclick="Restart()">Restart</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+
+<script type="text/javascript">
+function onScanSuccess(qrCodeMessage) {
+    const keySize = ['1','1.5','2','2.5','3','3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','13.5']
+    const code = qrCodeMessage.toString();
+    if(keySize.includes(code)){
+      const size = qrCodeMessage.replace(".5","T")
+      document.getElementById('result').innerHTML = '<span class="text-wrap text-success">'+ qrCodeMessage +'</span>';
+      setTimeout(dataScan(size,0), 3000)
+    } else {
+      document.getElementById('result').innerHTML = '<span class="text-wrap text-danger">ERRCODE: '+ qrCodeMessage +'  </span>';      
+    }
+    
+}
+
+function onScanError(errorMessage) {
+  //handle scan error
+}
+
+var html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader", { fps: 5, qrbox: 250 });
+html5QrcodeScanner.render(onScanSuccess, onScanError);
+
+
+// BUAT OBJEK ROW UNTUK MENDATA
+function dataScan(x,y) {
+  // body...
+  const table = document.querySelector("table.table")
+  const dsize = document.querySelector("[qty-size='"+x+"']");
+  if (dsize == null) {
+    const row = document.createElement("TR")
+    const elem = '<td class="upper-size">'+ x +'</td><td><div class="row no-gutters"><div class="col upper-qty" qty-size="'+ x +'">6</div><div class="col-1"><button class="btn btn-danger" onclick="remove(`'+ x +'`)">-6</button></div></div></td>';
+    row.innerHTML = elem
+
+    table.appendChild(row);
+  } else {
+    let result = parseInt(dsize.innerHTML);
+    dsize.innerHTML = result + 6
+  }
+}
+
+function Restart() {
+  // body...
+  document.querySelector("table.table").innerHTML = "";
+}
+
+function remove(x) {
+  // body...
+  let elem = document.querySelector("[qty-size='"+x+"']")
+  if(parseInt(elem.innerHTML) != 0){
+    elem.innerHTML = parseInt(elem.innerHTML) - 6;
+  }
+}
+
+function sortTable() {
+  var table, rows, switching, i, x, y, shouldSwitch;
+  table = document.querySelector("table.table");
+  switching = true;
+  /*Make a loop that will continue until
+  no switching has been done:*/
+  while (switching) {
+    //start by saying: no switching is done:
+    switching = false;
+    rows = table.rows;
+    /*Loop through all table rows (except the
+    first, which contains table headers):*/
+    for (i = 1; i < (rows.length - 1); i++) {
+      //start by saying there should be no switching:
+      shouldSwitch = false;
+      /*Get the two elements you want to compare,
+      one from current row and one from the next:*/
+      x = rows[i].getElementsByTagName("TD")[0];
+      y = rows[i + 1].getElementsByTagName("TD")[0];
+      //check if the two rows should switch place:
+      if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+        //if so, mark as a switch and break the loop:
+        shouldSwitch = true;
+        break;
+      }
+    }
+    if (shouldSwitch) {
+      /*If a switch has been marked, make the switch
+      and mark that a switch has been done:*/
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+    }
+  }
+}
+
+</script>
