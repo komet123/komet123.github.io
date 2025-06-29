@@ -67,7 +67,7 @@ function onScanSuccess(qrCodeMessage) {
       document.getElementById('result').innerHTML = '<span class="text-wrap text-success">'+ qrCodeMessage +'</span>';
       setTimeout(dataScan(size,0), 3000)
     } else {
-      document.getElementById('result').innerHTML = '<span class="text-wrap text-danger">ERRCODE: '+ qrCodeMessage +'  </span>';      
+      document.getElementById('result').innerHTML = '<span class="text-wrap text-danger">INVALID: '+ qrCodeMessage +'  </span>';      
     }
     
 }
