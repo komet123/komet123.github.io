@@ -259,30 +259,19 @@ function siPhaseBox() {
   siFlow('box');
 }
 
-async function siScanBox() {
+function siScanBox() {
   const barcode = getVal('si-box-bc');
   hide('si-box-err');
   if (!barcode) { showErr('si-box-err', 'Barcode box wajib diisi'); return; }
 
-  show('si-loading');
-  try {
-    const res = await apiRequest('POST', '/scan-in/box', {
-      barcode_box: barcode,
-      username:    SESSION.username,
-    });
-
-    siIdBox = res.data.id_box;
-    txt('si-box-info', barcode + '  →  ID: ' + siIdBox);
-    hide('si-phase-box');
-    show('si-phase-bag');
-    siFlow('bag');
-    el('si-bag-bc').value = '';
-    el('si-bag-bc').focus();
-  } catch (err) {
-    showErr('si-box-err', err.message);
-  } finally {
-    hide('si-loading');
-  }
+  // ID Box langsung pakai nilai barcode yang discan — tidak perlu ke server
+  siIdBox = barcode;
+  txt('si-box-info', 'Box Aktif: ' + siIdBox);
+  hide('si-phase-box');
+  show('si-phase-bag');
+  siFlow('bag');
+  el('si-bag-bc').value = '';
+  el('si-bag-bc').focus();
 }
 
 async function siScanBag() {
