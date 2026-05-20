@@ -1,199 +1,290 @@
-/* =============================================
-   SMS — app.js  (DEMO / STATIC MODE)
-   Semua fungsi API menggunakan async/await
-   Data random disimulasikan via mockApi()
-   ============================================= */
+/* ============================
+   SMS — app.js  (DEMO MODE)
+   async / await throughout
+   ============================ */
 
-// ── CONFIG ─────────────────────────────────────
-const USE_MOCK = true;          // false = pakai backend nyata
-const API_BASE = '/api';        // ganti saat backend siap
+const USE_MOCK = true;                      // false = hit real API
+const API_BASE = 'https://your-api.com/api';
 
-// ── SESSION ────────────────────────────────────
+// ─── SESSION ──────────────────────────────────────────
 let SESSION = { token: null, username: null, role: null };
 
-// ── MOCK DATA ──────────────────────────────────
+// ─── CONSTANTS ────────────────────────────────────────
+
+// Shoe sizes 1 – 18 step 0.5
+const SHOE_SIZES = [];
+for (let s = 1; s <= 18; s += 0.5) {
+  SHOE_SIZES.push(s % 1 === 0 ? String(s) : String(s));
+}
+
+// Line 1 – 25
+const LINES = Array.from({ length: 25 }, (_, i) => 'Line ' + (i + 1));
+
+const LOTS = ['LOT-A21', 'LOT-B14', 'LOT-C09', 'LOT-D33', 'LOT-E07', 'LOT-F12', 'LOT-G08'];
+
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function ri(arr)   { return arr[rnd(0, arr.length - 1)]; }
+
+// ─── MOCK DATABASE ────────────────────────────────────
+
 const MOCK_USERS = [
-  { username: 'admin',    password: '1234', role: 'Admin' },
+  { username: 'admin',    password: '1234', role: 'Admin'    },
   { username: 'operator', password: '1234', role: 'Operator' },
 ];
 
-const LOTS  = ['LOT-A21', 'LOT-B14', 'LOT-C09', 'LOT-D33'];
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-const LOKS  = [
-  'Temporary',
-  'A1','A2','A3','A4','A5','A6','A7','A8','A9','A10',
-  'B1','B2','B3','B4','B5','B6','B7','B8','B9','B10',
-];
+// Bag registry keyed by barcode
+const MOCK_BAGS = {};
 
-function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-function pick(arr)  { return arr[rnd(0, arr.length - 1)]; }
-
-// Generate mock rak data sekali saat load
-const MOCK_RAK = (() => {
+// Rak + palet data
+const MOCK_RAK = (function () {
+  const loks = [
+    'Temporary',
+    'A1','A2','A3','A4','A5','A6','A7','A8','A9','A10',
+    'B1','B2','B3','B4','B5','B6','B7','B8','B9','B10',
+  ];
   const db = {};
-  LOKS.forEach(l => {
-    const n = l === 'Temporary' ? rnd(0, 5) : rnd(0, 14);
-    db[l] = [];
+  loks.forEach(function (l) {
+    const n = l === 'Temporary' ? rnd(0, 4) : rnd(0, 13);
+    const pallets = [];
     for (let i = 0; i < n; i++) {
-      const dateStr = '2026051' + rnd(0, 7);
+      const d   = '2026051' + rnd(0, 7);
+      const lot = ri(LOTS);
       const boxes = [];
-      for (let j = 0; j < rnd(2, 6); j++) {
-        boxes.push({
-          id_box:  'BOX-' + rnd(1000, 9999),
-          lotcode: pick(LOTS),
-          size:    pick(SIZES),
-          nilai:   rnd(1, 9) * 10000,
-        });
+      for (let j = 0; j < rnd(1, 4); j++) {
+        const bags = [];
+        for (let k = 0; k < rnd(2, 6); k++) {
+          bags.push({
+            barcode: '0211' + String(rnd(100000000, 999999999)),
+            lotcode: lot,
+            qty:     rnd(200, 2000),
+            size:    ri(SHOE_SIZES),
+            nilai:   rnd(1, 12),
+          });
+        }
+        boxes.push({ id_box: 'BOX-' + rnd(1000, 9999), bags });
       }
-      db[l].push({ plt_name: `PLT-${dateStr}-${i + 1}`, boxes });
+      pallets.push({ plt_name: 'PLT-' + d + '-' + (i + 1), boxes });
     }
+    db[l] = pallets;
   });
   return db;
-})();
+}());
 
-let mockBoxSeq = 3000;
+// Report data (per-lotcode summary for today)
+const MOCK_REPORT = LOTS.map(function (lot) {
+  return {
+    lotcode: lot,
+    qty:     rnd(500, 3000),
+    input:   rnd(20, 200),
+    output:  rnd(0, 80),
+  };
+});
 
-// ── MOCK API ───────────────────────────────────
-function pause(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms || rnd(500, 900)));
+// ─── MOCK API ─────────────────────────────────────────
+
+function delay(ms) {
+  return new Promise(function (r) { setTimeout(r, ms || rnd(400, 800)); });
 }
 
-async function mockApi(method, endpoint, body) {
-  await pause();
+async function mockRequest(method, endpoint, body) {
+  await delay();
 
-  // POST /auth/login
+  // Auth
   if (endpoint === '/auth/login') {
-    const u = MOCK_USERS.find(
-      x => x.username === body.username && x.password === body.password
-    );
+    const u = MOCK_USERS.find(function (u) {
+      return u.username === body.username && u.password === body.password;
+    });
     if (!u) throw new Error('Username atau password salah');
-    return { data: { token: 'demo-token', username: u.username, role: u.role } };
+    return { data: { token: 'mock-token', username: u.username, role: u.role } };
   }
 
-  // POST /scan-in/box  → kembalikan id_box
+  // Scan In — box
   if (endpoint === '/scan-in/box') {
-    return { data: { id_box: 'BOX-' + (++mockBoxSeq) } };
+    return { data: { id_box: body.barcode_box } };
   }
 
-  // POST /scan-in/bag  → kembalikan lotcode, size, nilai
+  // Scan In — bag
   if (endpoint === '/scan-in/bag') {
-    return { data: { lotcode: pick(LOTS), size: pick(SIZES), nilai: rnd(1, 9) * 10000 } };
+    const bc = body.barcode_bag;
+    if (!MOCK_BAGS[bc]) {
+      MOCK_BAGS[bc] = {
+        lotcode: ri(LOTS),
+        qty:     rnd(200, 2000),
+        size:    ri(SHOE_SIZES),
+        nilai:   rnd(1, 12),
+      };
+    }
+    const b = MOCK_BAGS[bc];
+    return { data: { lotcode: b.lotcode, qty: b.qty, size: b.size, nilai: b.nilai } };
   }
 
-  // POST /scan-out  → kembalikan size, nilai
+  // Scan Out
   if (endpoint === '/scan-out') {
-    return { data: { size: pick(SIZES), nilai: rnd(1, 9) * 10000 } };
+    const bc = body.barcode_bag;
+    if (!MOCK_BAGS[bc]) {
+      MOCK_BAGS[bc] = {
+        lotcode: ri(LOTS),
+        qty:     rnd(200, 2000),
+        size:    ri(SHOE_SIZES),
+        nilai:   rnd(1, 12),
+      };
+    }
+    const b = MOCK_BAGS[bc];
+    if (b.lotcode !== body.lotcode) {
+      throw new Error('Lotcode tidak cocok dengan barcode bag ini');
+    }
+    return { data: { lotcode: b.lotcode, qty: b.qty, size: b.size, nilai: b.nilai } };
   }
 
-  // GET /location/rak  → list semua rak + jumlah palet
-  if (method === 'GET' && endpoint === '/location/rak') {
-    const list = LOKS.map(id => ({
-      id_rak:       id,
-      jumlah_palet: MOCK_RAK[id].length,
-      kapasitas:    16,
-    }));
-    return { data: list };
-  }
-
-  // GET /location/rak/:id  → isi palet di rak tersebut
+  // Location — rak detail
   if (method === 'GET' && endpoint.startsWith('/location/rak/')) {
-    const id = endpoint.replace('/location/rak/', '');
+    const id = endpoint.replace('/location/rak/', '').split('?')[0];
     return { data: MOCK_RAK[id] || [] };
   }
 
-  // POST /location/scan-box  → id_box, lotcode, nilai dari server
-  if (endpoint === '/location/scan-box') {
-    return {
-      data: { id_box: body.barcode_box, lotcode: pick(LOTS), nilai: rnd(1, 9) * 10000 },
-    };
+  // Location — rak list
+  if (method === 'GET' && endpoint.startsWith('/location/rak')) {
+    const list = Object.keys(MOCK_RAK).map(function (id) {
+      return { id_rak: id, jumlah_palet: MOCK_RAK[id].length, kapasitas: 16 };
+    });
+    return { data: list };
   }
 
-  // POST /location/palet  → simpan palet, server beri nama
-  if (endpoint === '/location/palet') {
-    const now  = new Date();
-    const d    = now.getFullYear().toString()
-               + String(now.getMonth() + 1).padStart(2, '0')
-               + String(now.getDate()).padStart(2, '0');
-    const cnt  = (MOCK_RAK[body.kode_rak] || []).length;
-    const name = `PLT-${d}-${cnt + 1}`;
-    if (!MOCK_RAK[body.kode_rak]) MOCK_RAK[body.kode_rak] = [];
-    MOCK_RAK[body.kode_rak].push({
-      plt_name: name,
-      boxes: body.boxes.map(id => ({
-        id_box:  id,
-        lotcode: pick(LOTS),
-        size:    pick(SIZES),
-        nilai:   rnd(1, 9) * 10000,
-      })),
+  // Location — scan box into palet
+  if (endpoint === '/location/scan-box') {
+    const id = body.barcode_box;
+    let found = null;
+    Object.values(MOCK_RAK).forEach(function (pallets) {
+      pallets.forEach(function (plt) {
+        plt.boxes.forEach(function (bx) { if (bx.id_box === id) found = bx; });
+      });
     });
-    return { data: { plt_name: name } };
+    if (!found) {
+      const lot  = ri(LOTS);
+      const bags = [];
+      for (let i = 0; i < rnd(2, 5); i++) {
+        bags.push({
+          barcode: '0211' + String(rnd(100000000, 999999999)),
+          lotcode: lot,
+          qty:     rnd(200, 2000),
+          size:    ri(SHOE_SIZES),
+          nilai:   rnd(1, 12),
+        });
+      }
+      found = { id_box: id, bags };
+    }
+    return { data: found };
+  }
+
+  // Location — save palet
+  if (endpoint === '/location/palet') {
+    const now = new Date();
+    const d   = now.getFullYear().toString()
+              + String(now.getMonth() + 1).padStart(2, '0')
+              + String(now.getDate()).padStart(2, '0');
+    const cnt = (MOCK_RAK[body.kode_rak] || []).length;
+    const nm  = 'PLT-' + d + '-' + (cnt + 1);
+    if (!MOCK_RAK[body.kode_rak]) MOCK_RAK[body.kode_rak] = [];
+    MOCK_RAK[body.kode_rak].push({ plt_name: nm, boxes: body.boxes });
+    return { data: { plt_name: nm } };
+  }
+
+  // Report — today
+  if (endpoint.startsWith('/report/today')) {
+    return { data: MOCK_REPORT };
   }
 
   throw new Error('Endpoint tidak dikenal: ' + endpoint);
 }
 
-// ── API REQUEST (router mock ↔ real) ───────────
-async function apiRequest(method, endpoint, body = null) {
-  if (USE_MOCK) return mockApi(method, endpoint, body);
+async function apiRequest(method, endpoint, body) {
+  if (USE_MOCK) return mockRequest(method, endpoint, body || null);
 
   const headers = { 'Content-Type': 'application/json' };
   if (SESSION.token) headers['Authorization'] = 'Bearer ' + SESSION.token;
 
-  const config = { method, headers };
-  if (body) config.body = JSON.stringify(body);
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
 
-  const res  = await fetch(API_BASE + endpoint, config);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Terjadi kesalahan server');
-  return json;
+  const res  = await fetch(API_BASE + endpoint, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Terjadi kesalahan server');
+  return data;
 }
 
-// ── UI HELPERS ─────────────────────────────────
-const rupiah = v => 'Rp ' + Number(v).toLocaleString('id-ID');
+// ─── UI HELPERS ───────────────────────────────────────
 
-function el(id)         { return document.getElementById(id); }
-function show(id)       { const e = el(id); if (e) e.style.display = 'block'; }
-function hide(id)       { const e = el(id); if (e) e.style.display = 'none'; }
-function showFlex(id)   { const e = el(id); if (e) e.style.display = 'flex'; }
-function txt(id, v)     { const e = el(id); if (e) e.textContent = v; }
-function getVal(id)     { return el(id).value.trim(); }
-function showErr(id, m) { const e = el(id); if (!e) return; e.textContent = m; e.style.display = 'block'; }
-function hideAll(ids)   { ids.forEach(hide); }
+function show(id)      { const e = document.getElementById(id); if (e) e.style.display = 'block'; }
+function hide(id)      { const e = document.getElementById(id); if (e) e.style.display = 'none';  }
+function showFlex(id)  { const e = document.getElementById(id); if (e) e.style.display = 'flex';  }
+function val(id)       { return document.getElementById(id).value.trim(); }
+function setTxt(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
+function hideEl(id)    { hide(id); }
 
-function flash(id, msgId, msg, ms) {
-  if (msgId) txt(msgId, msg);
-  showFlex(id);
-  setTimeout(() => hide(id), ms || 2500);
+function showErr(id, msg) {
+  const e = document.getElementById(id);
+  if (!e) return;
+  e.textContent    = msg;
+  e.style.display  = 'block';
 }
 
-// Navigasi halaman utama
+function flashOk(id, msgId, msg, ms) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (msgId) document.getElementById(msgId).textContent = msg;
+  el.style.display = 'flex';
+  setTimeout(function () { el.style.display = 'none'; }, ms || 2500);
+}
+
+// ─── PAGE NAVIGATION ──────────────────────────────────
+
 function goPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
-  el('page-' + name).classList.add('on');
+  document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('on'); });
+  document.getElementById('page-' + name).classList.add('on');
   window.scrollTo(0, 0);
   if (name === 'scan-in')  siInit();
   if (name === 'scan-out') soInit();
   if (name === 'location') locInit();
+  if (name === 'report')   rptInit();
 }
 
-// ═══════════════════════════════════════════════
+// ─── INIT DROPDOWNS (called once after login) ─────────
+
+function initDropdowns() {
+  const lineEl = document.getElementById('so-line');
+  if (lineEl && lineEl.options.length <= 1) {
+    LINES.forEach(function (l) {
+      const o   = document.createElement('option');
+      o.value   = l;
+      o.textContent = l;
+      lineEl.appendChild(o);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════
 //  LOGIN
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 function togglePass() {
-  const inp  = el('login-password');
-  const icon = el('eye-icon');
-  if (inp.type === 'password') { inp.type = 'text';     icon.className = 'ti ti-eye-off'; }
-  else                         { inp.type = 'password'; icon.className = 'ti ti-eye'; }
+  const inp = document.getElementById('login-password');
+  const ico = document.getElementById('eye-icon');
+  if (inp.type === 'password') {
+    inp.type      = 'text';
+    ico.className = 'ti ti-eye-off';
+  } else {
+    inp.type      = 'password';
+    ico.className = 'ti ti-eye';
+  }
 }
 
 async function doLogin() {
-  const username = getVal('login-username');
-  const password = getVal('login-password');
-  hide('login-err');
+  const username = val('login-username');
+  const password = val('login-password');
+  hideEl('login-err');
 
   if (!username || !password) {
-    txt('login-err-msg', 'Username dan password wajib diisi');
+    setTxt('login-err-msg', 'Username dan password wajib diisi');
     showFlex('login-err');
     return;
   }
@@ -201,16 +292,15 @@ async function doLogin() {
   show('login-loading');
   try {
     const res = await apiRequest('POST', '/auth/login', { username, password });
-
     SESSION.token    = res.data.token;
     SESSION.username = res.data.username;
     SESSION.role     = res.data.role;
-
-    txt('dash-username', SESSION.username);
-    txt('dash-role',     SESSION.role);
+    setTxt('dash-username', SESSION.username);
+    setTxt('dash-role',     SESSION.role);
+    initDropdowns();
     goPage('dashboard');
   } catch (err) {
-    txt('login-err-msg', err.message);
+    setTxt('login-err-msg', err.message || 'Login gagal');
     showFlex('login-err');
   } finally {
     hide('login-loading');
@@ -219,14 +309,14 @@ async function doLogin() {
 
 function doLogout() {
   SESSION = { token: null, username: null, role: null };
-  el('login-username').value = '';
-  el('login-password').value = '';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
   goPage('login');
 }
 
-// ═══════════════════════════════════════════════
-//  SCAN IN
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  SCAN IN  —  1 input, auto-detect BOX vs BAG
+// ══════════════════════════════════════════════════════
 
 let siData  = [];
 let siIdBox = null;
@@ -234,58 +324,72 @@ let siIdBox = null;
 function siInit() {
   siData  = [];
   siIdBox = null;
-  siPhaseBox();
-  siRender();
+  document.getElementById('si-input').value = '';
+  hideEl('si-err');
+  hideEl('si-ok');
+  hideEl('si-box-active');
+  siSetFlow('box');
+  siRenderTable();
 }
 
-function siFlow(step) {
+function siSetFlow(step) {
   const order = ['box', 'bag', 'done'];
   const idx   = order.indexOf(step);
-  order.forEach((s, i) => {
-    const e = el('fl-' + s);
-    if (!e) return;
-    e.classList.remove('active', 'done');
-    if (i < idx)        e.classList.add('done');
-    else if (i === idx) e.classList.add('active');
+  order.forEach(function (s, i) {
+    const el = document.getElementById('fl-' + s);
+    if (!el) return;
+    el.classList.remove('active', 'done');
+    if (i < idx)        el.classList.add('done');
+    else if (i === idx) el.classList.add('active');
   });
 }
 
-function siPhaseBox() {
-  hide('si-phase-bag');
-  show('si-phase-box');
-  el('si-box-bc').value = '';
-  hide('si-box-err');
-  siIdBox = null;
-  siFlow('box');
+async function siScan() {
+  const input = val('si-input');
+  hideEl('si-err');
+  hideEl('si-ok');
+  if (!input) { showErr('si-err', 'Barcode wajib diisi'); return; }
+
+  if (input.toUpperCase().startsWith('BOX-')) {
+    await siProcessBox(input.toUpperCase());
+  } else {
+    await siProcessBag(input);
+  }
 }
 
-function siScanBox() {
-  const barcode = getVal('si-box-bc');
-  hide('si-box-err');
-  if (!barcode) { showErr('si-box-err', 'Barcode box wajib diisi'); return; }
-
-  // ID Box langsung pakai nilai barcode yang discan — tidak perlu ke server
-  siIdBox = barcode;
-  txt('si-box-info', 'Box Aktif: ' + siIdBox);
-  hide('si-phase-box');
-  show('si-phase-bag');
-  siFlow('bag');
-  el('si-bag-bc').value = '';
-  el('si-bag-bc').focus();
+async function siProcessBox(barcode) {
+  show('si-loading');
+  try {
+    const res = await apiRequest('POST', '/scan-in/box', {
+      barcode_box: barcode,
+      username:    SESSION.username,
+    });
+    siIdBox = res.data.id_box;
+    setTxt('si-box-info', barcode + ' → ID: ' + siIdBox);
+    showFlex('si-box-active');
+    setTxt('si-hint', 'Scan bag sekarang');
+    siSetFlow('bag');
+    flashOk('si-ok', 'si-ok-msg', 'Box aktif: ' + siIdBox + ' — scan bag sekarang');
+    document.getElementById('si-input').value = '';
+    document.getElementById('si-input').focus();
+  } catch (err) {
+    showErr('si-err', err.message);
+  } finally {
+    hide('si-loading');
+  }
 }
 
-async function siScanBag() {
-  const barcode = getVal('si-bag-bc');
-  hide('si-bag-err');
-  hide('si-bag-ok');
-
-  if (!barcode) { showErr('si-bag-err', 'Barcode bag wajib diisi'); return; }
-  if (!/^0211\d{9}$/.test(barcode)) {
-    showErr('si-bag-err', 'Format tidak valid — harus awali 0211 dan 13 digit');
+async function siProcessBag(barcode) {
+  if (!siIdBox) {
+    showErr('si-err', 'Scan box dulu sebelum scan bag');
     return;
   }
-  if (siData.find(d => d.barcode === barcode)) {
-    showErr('si-bag-err', 'Barcode ini sudah discan');
+  if (!/^0211\d{9}$/.test(barcode)) {
+    showErr('si-err', 'Format bag tidak valid (awali 0211, 13 digit)');
+    return;
+  }
+  if (siData.find(function (d) { return d.barcode === barcode; })) {
+    showErr('si-err', 'Barcode bag ini sudah discan');
     return;
   }
 
@@ -295,88 +399,103 @@ async function siScanBag() {
       barcode_bag: barcode,
       username:    SESSION.username,
     });
-
     siData.push({
-      barcode,
-      lotcode: res.data.lotcode,
-      size:    res.data.size,
-      nilai:   res.data.nilai,
-      id_box:  siIdBox,
+      barcode:  barcode,
+      lotcode:  res.data.lotcode,
+      qty:      res.data.qty,
+      size:     res.data.size,
+      nilai:    res.data.nilai,
+      id_box:   siIdBox,
     });
-
-    siRender();
-    flash('si-bag-ok', 'si-bag-ok-msg',
-      `${barcode}  ·  ${res.data.lotcode}  ·  ${res.data.size}  ·  ${rupiah(res.data.nilai)}`);
-
-    el('si-bag-bc').value = '';
-    el('si-bag-bc').focus();
-    siFlow('done');
-    setTimeout(() => siFlow('bag'), 1500);
+    siRenderTable();
+    flashOk('si-ok', 'si-ok-msg',
+      barcode + ' — ' + res.data.lotcode +
+      ' · QTY:' + res.data.qty +
+      ' · Size:' + res.data.size +
+      ' · ' + res.data.nilai + ' pairs'
+    );
+    siSetFlow('done');
+    setTimeout(function () { siSetFlow('bag'); }, 1500);
+    document.getElementById('si-input').value = '';
+    document.getElementById('si-input').focus();
   } catch (err) {
-    showErr('si-bag-err', err.message);
+    showErr('si-err', err.message);
   } finally {
     hide('si-loading');
   }
 }
 
-function siGantiBox() { siPhaseBox(); }
+function siDeleteRow(i) { siData.splice(i, 1); siRenderTable(); }
 
-function siDel(i) { siData.splice(i, 1); siRender(); }
+function siRenderTable() {
+  const tbody = document.getElementById('si-tbody');
+  const tot   = document.getElementById('si-total');
 
-function siRender() {
-  const tbody = el('si-tbody');
-  const totEl = el('si-total');
   if (!siData.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Belum ada data</td></tr>';
-    totEl.style.display = 'none';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada data</td></tr>';
+    tot.style.display = 'none';
     return;
   }
-  let total = 0;
-  tbody.innerHTML = siData.map((d, i) => {
-    total += d.nilai;
-    return `<tr>
-      <td class="mono">${d.barcode}</td>
-      <td>${d.lotcode}</td>
-      <td class="tc">${d.size}</td>
-      <td class="tr">${rupiah(d.nilai)}</td>
-      <td class="mono">${d.id_box}</td>
-      <td><button class="del-btn" onclick="siDel(${i})"><i class="ti ti-trash" style="font-size:14px"></i></button></td>
-    </tr>`;
+
+  let totalPairs = 0;
+  tbody.innerHTML = siData.map(function (d, i) {
+    totalPairs += d.nilai;
+    return '<tr>' +
+      '<td class="mono">' + d.barcode + '</td>' +
+      '<td>' + d.lotcode + '</td>' +
+      '<td class="tc">' + d.qty + '</td>' +
+      '<td class="tc">' + d.size + '</td>' +
+      '<td class="tc">' + d.nilai + ' pairs</td>' +
+      '<td class="mono">' + d.id_box + '</td>' +
+      '<td><button class="del-btn" onclick="siDeleteRow(' + i + ')">' +
+        '<i class="ti ti-trash" style="font-size:14px"></i>' +
+      '</button></td>' +
+    '</tr>';
   }).join('');
-  txt('si-total-n', siData.length);
-  txt('si-total-v', rupiah(total));
-  totEl.style.display = 'flex';
+
+  setTxt('si-total-bag',   siData.length);
+  setTxt('si-total-pairs', totalPairs + ' pairs');
+  tot.style.display = 'flex';
 }
 
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  SCAN OUT
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 let soData = [];
 
 function soInit() {
   soData = [];
-  soRender();
-  el('so-barcode').value = '';
-  el('so-lotcode').value = '';
-  hideAll(['so-lot-err', 'so-bc-err', 'so-ok', 'so-loading']);
+  soRenderTable();
+  document.getElementById('so-barcode').value = '';
+  document.getElementById('so-lotcode').value = '';
+  document.getElementById('so-line').value    = '';
+  hideEl('so-line-err');
+  hideEl('so-lot-err');
+  hideEl('so-bc-err');
+  hideEl('so-ok');
 }
 
 async function soScan() {
-  const lotcode = getVal('so-lotcode');
-  const barcode = getVal('so-barcode');
-  let ok = true;
+  const line    = val('so-line');
+  const lotcode = val('so-lotcode');
+  const barcode = val('so-barcode');
+  let valid = true;
 
-  hideAll(['so-lot-err', 'so-bc-err', 'so-ok']);
+  hideEl('so-line-err');
+  hideEl('so-lot-err');
+  hideEl('so-bc-err');
+  hideEl('so-ok');
 
-  if (!lotcode) { showErr('so-lot-err', 'Lot code wajib diisi'); ok = false; }
+  if (!line)    { showErr('so-line-err', 'Line wajib dipilih'); valid = false; }
+  if (!lotcode) { showErr('so-lot-err',  'Lot code wajib diisi'); valid = false; }
   if (!barcode || !/^0211\d{9}$/.test(barcode)) {
-    showErr('so-bc-err', 'Format tidak valid — harus awali 0211 dan 13 digit');
-    ok = false;
+    showErr('so-bc-err', 'Format tidak valid (awali 0211, 13 digit)');
+    valid = false;
   }
-  if (!ok) return;
+  if (!valid) return;
 
-  if (soData.find(d => d.barcode === barcode)) {
+  if (soData.find(function (d) { return d.barcode === barcode; })) {
     showErr('so-bc-err', 'Barcode ini sudah discan');
     return;
   }
@@ -384,18 +503,27 @@ async function soScan() {
   show('so-loading');
   try {
     const res = await apiRequest('POST', '/scan-out', {
-      lotcode,
+      lotcode:     lotcode,
       barcode_bag: barcode,
+      line:        line,
       username:    SESSION.username,
     });
-
-    soData.push({ barcode, size: res.data.size, nilai: res.data.nilai });
-    soRender();
-    flash('so-ok', 'so-ok-msg',
-      `${barcode}  ·  Size: ${res.data.size}  ·  ${rupiah(res.data.nilai)}`);
-
-    el('so-barcode').value = '';
-    el('so-barcode').focus();
+    soData.push({
+      barcode:  barcode,
+      lotcode:  res.data.lotcode,
+      qty:      res.data.qty,
+      size:     res.data.size,
+      nilai:    res.data.nilai,
+      line:     line,
+    });
+    soRenderTable();
+    flashOk('so-ok', 'so-ok-msg',
+      barcode + ' — ' + res.data.lotcode +
+      ' · Size:' + res.data.size +
+      ' · ' + res.data.nilai + ' pairs · ' + line
+    );
+    document.getElementById('so-barcode').value = '';
+    document.getElementById('so-barcode').focus();
   } catch (err) {
     showErr('so-bc-err', err.message);
   } finally {
@@ -403,299 +531,323 @@ async function soScan() {
   }
 }
 
-function soDel(i) { soData.splice(i, 1); soRender(); }
+function soDelete(i) { soData.splice(i, 1); soRenderTable(); }
 
-function soRender() {
-  const tbody = el('so-tbody');
-  const totEl = el('so-total');
+function soRenderTable() {
+  const tbody = document.getElementById('so-tbody');
+  const tot   = document.getElementById('so-total');
+
   if (!soData.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Belum ada data</td></tr>';
-    totEl.style.display = 'none';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Belum ada data</td></tr>';
+    tot.style.display = 'none';
     return;
   }
-  let total = 0;
-  tbody.innerHTML = soData.map((d, i) => {
-    total += d.nilai;
-    return `<tr>
-      <td class="mono">${d.barcode}</td>
-      <td class="tc">${d.size}</td>
-      <td class="tr">${rupiah(d.nilai)}</td>
-      <td><button class="del-btn" onclick="soDel(${i})"><i class="ti ti-trash" style="font-size:14px"></i></button></td>
-    </tr>`;
+
+  let totalPairs = 0;
+  tbody.innerHTML = soData.map(function (d, i) {
+    totalPairs += d.nilai;
+    return '<tr>' +
+      '<td class="mono">' + d.barcode + '</td>' +
+      '<td>' + d.lotcode + '</td>' +
+      '<td class="tc">' + d.qty + '</td>' +
+      '<td class="tc">' + d.size + '</td>' +
+      '<td class="tc">' + d.nilai + ' pairs</td>' +
+      '<td>' + d.line + '</td>' +
+      '<td><button class="del-btn" onclick="soDelete(' + i + ')">' +
+        '<i class="ti ti-trash" style="font-size:14px"></i>' +
+      '</button></td>' +
+    '</tr>';
   }).join('');
-  txt('so-total-n', soData.length);
-  txt('so-total-v', rupiah(total));
-  totEl.style.display = 'flex';
+
+  setTxt('so-total-bag',   soData.length);
+  setTxt('so-total-pairs', totalPairs + ' pairs');
+  tot.style.display = 'flex';
 }
 
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  LOCATION
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 const LOC_CAP = 16;
-let locRak   = null;
-let locBoxes = [];
+let locSelRak = null;
+let locBoxes  = [];
 
-// ── Sub-page navigation ──
-function locGo(n) {
-  document.querySelectorAll('.loc-pg').forEach(p => p.classList.remove('on'));
-  el('loc-pg' + n).classList.add('on');
-  locBc(n);
-  window.scrollTo(0, 0);
-}
-
-function locBc(n) {
-  const b1  = el('bc1'), b2 = el('bc2'), b3 = el('bc3');
-  const s2  = el('bc-s2'), s3 = el('bc-s3');
-  b1.className = 'bc-link';
-  b2.className = 'bc-link';
-  if (n === 1) {
-    b1.className = 'bc-active';
-    s2.style.display = 'none'; b2.style.display = 'none';
-    s3.style.display = 'none'; b3.style.display = 'none';
-  } else if (n === 2) {
-    b2.textContent = locRak; b2.className = 'bc-active';
-    s2.style.display = 'inline'; b2.style.display = 'inline';
-    s3.style.display = 'none';   b3.style.display = 'none';
-  } else {
-    b2.textContent = locRak;
-    s2.style.display = 'inline'; b2.style.display = 'inline';
-    s3.style.display = 'inline'; b3.style.display = 'inline';
-  }
-}
-
-// ── Page 1: Denah ──
 async function locInit() {
-  locGo(1);
-  show('loc-load');
+  locSetPg(1);
+  show('loc-loading');
   try {
-    const res = await apiRequest('GET', '/location/rak');
+    const res = await apiRequest('GET', '/location/rak?username=' + SESSION.username);
     locRenderGrid(res.data);
   } catch (err) {
-    console.error(err.message);
+    console.error('Gagal load denah:', err.message);
   } finally {
-    hide('loc-load');
+    hide('loc-loading');
   }
 }
 
-function rakCls(cnt) {
-  if (cnt === 0)       return 'st-empty';
-  if (cnt >= LOC_CAP) return 'st-full';
-  return 'st-some';
-}
-
-function locRenderGrid(list) {
+function locRenderGrid(rakList) {
   const map = {};
-  list.forEach(r => { map[r.id_rak] = r.jumlah_palet; });
-  const c = id => map[id] || 0;
+  rakList.forEach(function (r) { map[r.id_rak] = r.jumlah_palet; });
 
-  // Temporary
-  const T  = el('cell-T');
-  const cT = c('Temporary');
-  T.className = 'tmp-row ' + rakCls(cT);
-  T.innerHTML = `<span>Temporary</span><span style="font-size:11px;opacity:.85">${cT}/${LOC_CAP}</span>`;
+  function c(id)   { return map[id] || 0; }
+  function cls(id) {
+    const n = c(id);
+    if (n === 0)      return 'st-empty';
+    if (n >= LOC_CAP) return 'st-full';
+    return 'st-some';
+  }
 
-  // Grid A & B
-  ['a', 'b'].forEach(z => {
-    const grid = el('grid-' + z);
+  const T = document.getElementById('cell-T');
+  T.className = 'tmp-row ' + cls('Temporary');
+  T.innerHTML =
+    '<span>Temporary</span>' +
+    '<span style="font-size:11px;opacity:.85">' + c('Temporary') + '/' + LOC_CAP + '</span>';
+
+  ['a', 'b'].forEach(function (z) {
+    const grid = document.getElementById('grid-' + z);
     grid.innerHTML = '';
     for (let i = 1; i <= 10; i++) {
       const id  = (z === 'a' ? 'A' : 'B') + i;
       const cnt = c(id);
       const d   = document.createElement('div');
-      d.className = 'rak-cell ' + rakCls(cnt);
-      d.innerHTML = `<div><div>${id}</div><div class="sub">${cnt}/${LOC_CAP}</div></div>`;
-      d.onclick   = () => locPick(id);
+      d.className = 'rak-cell ' + cls(id);
+      d.innerHTML =
+        '<div>' +
+          '<div>' + id + '</div>' +
+          '<div class="sub">' + cnt + '/' + LOC_CAP + '</div>' +
+        '</div>';
+      d.onclick = function () { locPick(id); };
       grid.appendChild(d);
     }
   });
 
   let some = 0, full = 0, empty = 0;
-  list.forEach(r => {
+  rakList.forEach(function (r) {
     const n = r.jumlah_palet;
-    if (n === 0) empty++; else if (n >= LOC_CAP) full++; else some++;
+    if (n === 0)           empty++;
+    else if (n >= LOC_CAP) full++;
+    else                   some++;
   });
-  txt('stat-some', some); txt('stat-full', full); txt('stat-empty', empty);
+  setTxt('stat-some',  some);
+  setTxt('stat-full',  full);
+  setTxt('stat-empty', empty);
 }
 
-// ── Page 2: Isi Rak ──
-async function locPick(id) {
-  locRak = id;
-  locGo(2);
-  txt('p2-lok', id);
-  txt('p2-kap', 'Memuat...');
-  show('p2-load');
-  el('p2-body').innerHTML = '';
-  el('btn-add-plt').style.display = 'none';
+function locPick(id) {
+  locSelRak = id;
+  locSetPg(2);
+  locSetBc(2);
+  locLoadRak(id);
+}
+
+async function locLoadRak(id) {
+  setTxt('p2-lok', id);
+  setTxt('p2-kap', 'Memuat...');
+  show('p2-loading');
+  document.getElementById('p2-body').innerHTML = '';
+  document.getElementById('btn-add-plt').style.display = 'none';
 
   try {
-    const res = await apiRequest('GET', '/location/rak/' + id);
+    const res = await apiRequest('GET', '/location/rak/' + id + '?username=' + SESSION.username);
     locRenderP2(res.data);
   } catch (err) {
-    el('p2-body').innerHTML =
-      `<div class="card"><p style="color:#991b1b;font-size:13px;text-align:center;padding:16px">${err.message}</p></div>`;
+    document.getElementById('p2-body').innerHTML =
+      '<div class="card"><p style="color:var(--red-t);font-size:13px;text-align:center;padding:16px">' +
+      err.message + '</p></div>';
   } finally {
-    hide('p2-load');
+    hide('p2-loading');
   }
 }
 
-// Gabung lotcode+size yang sama → jumlahkan nilai
-function groupBoxes(boxes) {
+// Group rows: Lotcode + QTY + Size sama → sum nilai (pairs)
+function locGroup(boxes) {
   const map = {};
-  boxes.forEach(b => {
-    const k = b.lotcode + '|' + b.size;
-    if (!map[k]) map[k] = { lotcode: b.lotcode, size: b.size, nilai: 0 };
-    map[k].nilai += b.nilai;
+  boxes.forEach(function (bx) {
+    bx.bags.forEach(function (b) {
+      const k = b.lotcode + '||' + b.qty + '||' + b.size;
+      if (!map[k]) map[k] = { lotcode: b.lotcode, qty: b.qty, size: b.size, nilai: 0 };
+      map[k].nilai += b.nilai;
+    });
   });
-  return Object.values(map).sort((a, b) =>
-    a.lotcode.localeCompare(b.lotcode) || a.size.localeCompare(b.size)
-  );
+  return Object.values(map).sort(function (a, b) {
+    return a.lotcode.localeCompare(b.lotcode) || Number(a.size) - Number(b.size);
+  });
 }
 
 function locRenderP2(pallets) {
   const cnt  = pallets.length;
   const full = cnt >= LOC_CAP;
-  txt('p2-kap', `${cnt}/${LOC_CAP} palet terisi`);
-  el('btn-add-plt').style.display = full ? 'none' : 'flex';
 
-  const body = el('p2-body');
+  setTxt('p2-kap', cnt + '/' + LOC_CAP + ' palet terisi');
+  document.getElementById('btn-add-plt').style.display = full ? 'none' : 'flex';
+
+  const body = document.getElementById('p2-body');
 
   if (!pallets.length) {
-    body.innerHTML = `
-      <div class="card">
-        <div class="empty-state">
-          <i class="ti ti-packages"></i>
-          <p>Rak <strong>${locRak}</strong> kosong</p>
-          <small>Belum ada palet di rak ini</small>
-          <button class="btn-info" onclick="locOpenP3()" style="margin:0 auto">
-            <i class="ti ti-plus"></i> Tambahkan Palet
-          </button>
-        </div>
-      </div>`;
+    body.innerHTML =
+      '<div class="card">' +
+        '<div class="empty-state">' +
+          '<i class="ti ti-packages"></i>' +
+          '<p>Rak <strong>' + locSelRak + '</strong> kosong</p>' +
+          '<small>Belum ada palet di rak ini</small>' +
+          '<button class="btn-info" onclick="locOpenP3()" style="margin:0 auto">' +
+            '<i class="ti ti-plus"></i> Tambahkan Palet' +
+          '</button>' +
+        '</div>' +
+      '</div>';
     return;
   }
 
   let html = '';
-  pallets.forEach((plt, pi) => {
-    const grouped  = groupBoxes(plt.boxes);
-    const totNilai = grouped.reduce((a, x) => a + x.nilai, 0);
-    html += `
-      <div class="plt-card">
-        <div class="plt-head">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="plt-badge">P${pi + 1}</div>
-            <div>
-              <div class="plt-name">${plt.plt_name}</div>
-              <div class="plt-meta">${plt.boxes.length} box</div>
-            </div>
-          </div>
-          <div class="plt-total">
-            <div class="plt-total-lbl">Total Nilai</div>
-            <div class="plt-total-val">${rupiah(totNilai)}</div>
-          </div>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr>
-              <th>Lotcode</th><th class="tc">Size</th><th class="tr">Nilai</th>
-            </tr></thead>
-            <tbody>
-              ${grouped.map(r => `
-                <tr>
-                  <td>${r.lotcode}</td>
-                  <td class="tc">${r.size}</td>
-                  <td class="tr">${rupiah(r.nilai)}</td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>`;
+  pallets.forEach(function (plt, pi) {
+    const grouped    = locGroup(plt.boxes);
+    const totalPairs = grouped.reduce(function (a, x) { return a + x.nilai; }, 0);
+
+    html +=
+      '<div class="plt-card">' +
+        '<div class="plt-head">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            '<div class="plt-badge">P' + (pi + 1) + '</div>' +
+            '<div>' +
+              '<div class="plt-name">' + plt.plt_name + '</div>' +
+              '<div class="plt-meta">' + plt.boxes.length + ' box</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="plt-total">' +
+            '<div class="plt-total-lbl">Total</div>' +
+            '<div class="plt-total-val">' + totalPairs + ' pairs</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="tbl-scroll"><table>' +
+          '<thead><tr>' +
+            '<th>Lotcode</th>' +
+            '<th class="tr">QTY</th>' +
+            '<th class="tc">Size</th>' +
+            '<th class="tr">Nilai</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+          grouped.map(function (r) {
+            return '<tr>' +
+              '<td>' + r.lotcode + '</td>' +
+              '<td class="tr">' + r.qty + '</td>' +
+              '<td class="tc">' + r.size + '</td>' +
+              '<td class="tr">' + r.nilai + ' pairs</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table></div>' +
+      '</div>';
   });
 
   if (!full) {
-    html += `
-      <button class="btn-dashed" onclick="locOpenP3()">
-        <i class="ti ti-plus"></i> Tambahkan Palet (${cnt}/${LOC_CAP} terisi)
-      </button>`;
+    html +=
+      '<button class="btn-dashed" onclick="locOpenP3()">' +
+        '<i class="ti ti-plus"></i> Tambahkan Palet (' + cnt + '/' + LOC_CAP + ' terisi)' +
+      '</button>';
   }
+
   body.innerHTML = html;
 }
 
-// ── Page 3: Isi Palet ──
 function locOpenP3() {
   locBoxes = [];
-  const now  = new Date();
-  const d    = now.getFullYear().toString()
-             + String(now.getMonth() + 1).padStart(2, '0')
-             + String(now.getDate()).padStart(2, '0');
-  const seq  = (MOCK_RAK[locRak] || []).length + 1;
-  txt('p3-sub', `${locRak}  ·  PLT-${d}-${seq}`);
-  txt('p3-cnt', '0 box');
-  el('p3-bc').value = '';
-  hideAll(['p3-err', 'p3-ok', 'p3-load', 'p3-save', 'p3-saving', 'p3-done']);
+  const now = new Date();
+  const d   =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0');
+
+  setTxt('p3-sub', locSelRak + ' · PLT-' + d + '-? (ditetapkan server)');
+  setTxt('p3-cnt', '0 box');
+  document.getElementById('p3-bc').value = '';
+
+  ['p3-err', 'p3-ok', 'p3-loading', 'p3-save', 'p3-saving', 'p3-done'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   locRenderP3();
-  locGo(3);
-  setTimeout(() => el('p3-bc').focus(), 100);
+  locSetPg(3);
+  locSetBc(3);
+  setTimeout(function () { document.getElementById('p3-bc').focus(); }, 100);
 }
 
 async function locScanBox() {
-  const barcode = getVal('p3-bc');
-  const errEl   = el('p3-err');
+  const barcode = val('p3-bc');
+  const errEl   = document.getElementById('p3-err');
   errEl.style.display = 'none';
-  hide('p3-ok');
+  hideEl('p3-ok');
 
-  if (!barcode) { errEl.textContent = 'Barcode wajib diisi'; errEl.style.display = 'block'; return; }
-  if (locBoxes.find(b => b.id_box === barcode)) {
-    errEl.textContent = 'Box ini sudah discan'; errEl.style.display = 'block'; return;
+  if (!barcode) {
+    errEl.textContent   = 'Barcode box wajib diisi';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (locBoxes.find(function (b) { return b.id_box === barcode; })) {
+    errEl.textContent   = 'Box ini sudah discan';
+    errEl.style.display = 'block';
+    return;
   }
 
-  show('p3-load');
+  show('p3-loading');
   try {
     const res = await apiRequest('POST', '/location/scan-box', {
       barcode_box: barcode,
-      kode_rak:    locRak,
+      kode_rak:    locSelRak,
       username:    SESSION.username,
     });
-    locBoxes.push({ id_box: res.data.id_box, lotcode: res.data.lotcode, nilai: res.data.nilai });
+    const box        = res.data;
+    const totalPairs = box.bags.reduce(function (a, b) { return a + b.nilai; }, 0);
+    locBoxes.push({ id_box: box.id_box, bags: box.bags, totalPairs });
     locRenderP3();
-    flash('p3-ok', 'p3-ok-msg',
-      `${res.data.id_box}  ·  ${res.data.lotcode}  ·  ${rupiah(res.data.nilai)}`);
-    el('p3-bc').value = '';
-    el('p3-bc').focus();
+    flashOk('p3-ok', 'p3-ok-msg',
+      box.id_box + ' · ' + box.bags.length + ' bag · ' + totalPairs + ' pairs'
+    );
+    document.getElementById('p3-bc').value = '';
+    document.getElementById('p3-bc').focus();
   } catch (err) {
-    errEl.textContent = err.message; errEl.style.display = 'block';
+    errEl.textContent   = err.message;
+    errEl.style.display = 'block';
   } finally {
-    hide('p3-load');
+    hide('p3-loading');
   }
 }
 
 function locDelBox(i) { locBoxes.splice(i, 1); locRenderP3(); }
 
 function locRenderP3() {
-  const tbody  = el('p3-tbody');
-  const totEl  = el('p3-total');
-  const saveBtn = el('p3-save');
-  txt('p3-cnt', locBoxes.length + ' box');
+  const tbody   = document.getElementById('p3-tbody');
+  const tot     = document.getElementById('p3-total');
+  const saveBtn = document.getElementById('p3-save');
+
+  setTxt('p3-cnt', locBoxes.length + ' box');
 
   if (!locBoxes.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">Belum ada box</td></tr>';
-    totEl.style.display   = 'none';
+    tbody.innerHTML   = '<tr><td colspan="6" class="empty-cell">Belum ada box</td></tr>';
+    tot.style.display = 'none';
     saveBtn.style.display = 'none';
     return;
   }
-  let total = 0;
-  tbody.innerHTML = locBoxes.map((b, i) => {
-    total += b.nilai;
-    return `<tr>
-      <td class="mono">${b.id_box}</td>
-      <td>${b.lotcode}</td>
-      <td class="tr">${rupiah(b.nilai)}</td>
-      <td><button class="del-btn" onclick="locDelBox(${i})"><i class="ti ti-trash" style="font-size:14px"></i></button></td>
-    </tr>`;
+
+  let totalPairs = 0;
+  tbody.innerHTML = locBoxes.map(function (b, i) {
+    totalPairs += b.totalPairs;
+    const lots  = [...new Set(b.bags.map(function (x) { return x.lotcode; }))].join(', ');
+    const sizes = [...new Set(b.bags.map(function (x) { return x.size; }))].slice(0, 3).join('/');
+    return '<tr>' +
+      '<td class="mono">' + b.id_box + '</td>' +
+      '<td>' + lots + '</td>' +
+      '<td class="tc">' + (b.bags[0] ? b.bags[0].qty : '—') + '</td>' +
+      '<td class="tc">' + sizes + '</td>' +
+      '<td class="tc">' + b.totalPairs + ' pairs</td>' +
+      '<td><button class="del-btn" onclick="locDelBox(' + i + ')">' +
+        '<i class="ti ti-trash" style="font-size:14px"></i>' +
+      '</button></td>' +
+    '</tr>';
   }).join('');
-  txt('p3-total-n', locBoxes.length);
-  txt('p3-total-v', rupiah(total));
-  totEl.style.display   = 'flex';
+
+  setTxt('p3-total-n',     locBoxes.length);
+  setTxt('p3-total-pairs', totalPairs + ' pairs');
+  tot.style.display     = 'flex';
   saveBtn.style.display = 'flex';
 }
 
@@ -705,20 +857,147 @@ async function locSavePalet() {
   show('p3-saving');
   try {
     const res = await apiRequest('POST', '/location/palet', {
-      kode_rak: locRak,
+      kode_rak: locSelRak,
       username: SESSION.username,
-      boxes:    locBoxes.map(b => b.id_box),
+      boxes:    locBoxes.map(function (b) { return { id_box: b.id_box, bags: b.bags }; }),
     });
-    txt('p3-done-msg', `${res.data.plt_name}  ·  ${locBoxes.length} box  ·  Rak ${locRak}`);
+    const totalPairs = locBoxes.reduce(function (a, b) { return a + b.totalPairs; }, 0);
+    setTxt('p3-done-msg',
+      res.data.plt_name + ' · ' + locBoxes.length + ' box · ' +
+      totalPairs + ' pairs · Rak ' + locSelRak
+    );
     hide('p3-saving');
     show('p3-done');
     locBoxes = [];
   } catch (err) {
     hide('p3-saving');
     show('p3-save');
-    const e = el('p3-err');
-    e.textContent = err.message; e.style.display = 'block';
+    const errEl = document.getElementById('p3-err');
+    errEl.textContent   = err.message;
+    errEl.style.display = 'block';
   }
 }
 
 function locLagi() { hide('p3-done'); locOpenP3(); }
+
+// Sub-page navigation helpers
+function locSetBc(n) {
+  const bc1 = document.getElementById('bc1');
+  const bc2 = document.getElementById('bc2');
+  const bc3 = document.getElementById('bc3');
+  const bs2 = document.getElementById('bc-s2');
+  const bs3 = document.getElementById('bc-s3');
+
+  bc1.className = 'bc-link';
+  bc2.className = 'bc-link';
+
+  if (n === 1) {
+    bc1.className      = 'bc-active';
+    bs2.style.display  = 'none';
+    bc2.style.display  = 'none';
+    bs3.style.display  = 'none';
+    bc3.style.display  = 'none';
+  } else if (n === 2) {
+    bc2.textContent    = locSelRak;
+    bc2.className      = 'bc-active';
+    bs2.style.display  = 'inline';
+    bc2.style.display  = 'inline';
+    bs3.style.display  = 'none';
+    bc3.style.display  = 'none';
+  } else {
+    bc2.textContent    = locSelRak;
+    bs2.style.display  = 'inline';
+    bc2.style.display  = 'inline';
+    bs3.style.display  = 'inline';
+    bc3.style.display  = 'inline';
+  }
+}
+
+function locSetPg(n) {
+  document.querySelectorAll('.loc-pg').forEach(function (p) { p.classList.remove('on'); });
+  document.getElementById('loc-pg' + n).classList.add('on');
+  window.scrollTo(0, 0);
+}
+
+function locGo(n) {
+  locSetPg(n);
+  locSetBc(n);
+  if (n === 1) locInit();
+  else if (n === 2 && locSelRak) locLoadRak(locSelRak);
+}
+
+// ══════════════════════════════════════════════════════
+//  REPORT
+// ══════════════════════════════════════════════════════
+
+let rptData = [];
+
+async function rptInit() {
+  const now  = new Date();
+  const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  setTxt('rpt-date', now.toLocaleDateString('id-ID', opts));
+  document.getElementById('rpt-search').value = '';
+
+  try {
+    const res = await apiRequest('GET', '/report/today?username=' + SESSION.username);
+    rptData   = res.data;
+
+    const totalIn  = rptData.reduce(function (a, d) { return a + d.input;  }, 0);
+    const totalOut = rptData.reduce(function (a, d) { return a + d.output; }, 0);
+    const cntIn    = rptData.filter(function (d) { return d.input  > 0; }).length;
+    const cntOut   = rptData.filter(function (d) { return d.output > 0; }).length;
+
+    setTxt('rpt-in-val',  totalIn  + ' pairs');
+    setTxt('rpt-in-sub',  cntIn    + ' lotcode');
+    setTxt('rpt-out-val', totalOut + ' pairs');
+    setTxt('rpt-out-sub', cntOut   + ' lotcode');
+
+    rptRender();
+  } catch (err) {
+    console.error('Gagal load report:', err.message);
+  }
+}
+
+function rptRender() {
+  const q    = (document.getElementById('rpt-search').value || '').toLowerCase();
+  const rows = rptData.filter(function (d) {
+    return !q || d.lotcode.toLowerCase().includes(q);
+  });
+
+  const tbody = document.getElementById('rpt-tbody');
+  const tfoot = document.getElementById('rpt-tfoot');
+
+  if (!rows.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--t4);font-size:12px">' +
+      'Tidak ada data</td></tr>';
+    tfoot.innerHTML = '';
+    setTxt('rpt-showing', '0');
+    setTxt('rpt-net', '0 pairs');
+    return;
+  }
+
+  tbody.innerHTML = rows.map(function (d) {
+    return '<tr>' +
+      '<td class="lot-main">' + d.lotcode + '</td>' +
+      '<td class="qty-val">' + d.qty.toLocaleString('id-ID') + '</td>' +
+      '<td class="in-val">'  + d.input  + '</td>' +
+      '<td class="out-val">' + d.output + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const tIn  = rows.reduce(function (a, d) { return a + d.input;  }, 0);
+  const tOut = rows.reduce(function (a, d) { return a + d.output; }, 0);
+  const net  = tIn - tOut;
+
+  tfoot.innerHTML =
+    '<tr style="background:var(--border-lt)">' +
+      '<td style="padding:7px 8px;font-size:10px;font-weight:600;color:var(--t3)">TOTAL</td>' +
+      '<td class="qty-val" style="padding:7px 8px">—</td>' +
+      '<td class="in-val"  style="padding:7px 8px">' + tIn  + '</td>' +
+      '<td class="out-val" style="padding:7px 8px">' + tOut + '</td>' +
+    '</tr>';
+
+  setTxt('rpt-showing', rows.length);
+  setTxt('rpt-net',     net + ' pairs');
+}
